@@ -13,44 +13,45 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Dados incompletos' });
     }
 
-    // Primeiro verifica se a empresa existe
+    // Debug: log da tentativa
+    console.log('Tentativa de login:', { empresa, usuario, senha });
+
+    // 1. Busca a empresa pelo nome
     const empresaData = await queryAirtable(
       'EMPRESAS',
       `{Nome} = "${empresa}"`
     );
 
     if (empresaData.records.length === 0) {
+      console.log('Empresa não encontrada:', empresa);
       return res.status(404).json({ error: 'Empresa não encontrada' });
     }
 
     const empresaRecord = empresaData.records[0];
     const empresaId = empresaRecord.id;
 
-    // Verifica se é um administrador
-    if (empresaRecord.fields['Usuário ADM'] === usuario && 
-        empresaRecord.fields['Senha ADM'] === senha) {
-      return res.json({
-        tipo: 'admin',
-        nome: usuario,
-        empresa: empresaRecord.fields.Nome,
-        empresaId: empresaId,
-        logo: empresaRecord.fields.Logo,
-        corPrimaria: empresaRecord.fields['Cor Primária'],
-        corSecundaria: empresaRecord.fields['Cor Secundária']
-      });
-    }
-
-    // Se não for admin, verifica se é motorista
+    // 2. Verifica se é um motorista (comum ou admin)
     const motoristaData = await queryAirtable(
       'MOTORISTAS',
-      `AND({Empresa} = "${empresaId}", {Nome Completo} = "${usuario}", {CPF5} = "${senha}", {Ativo} = TRUE())`,
-      1
+      `AND(
+        {Empresa} = "${empresaId}", 
+        {Primeiro Nome} = "${usuario}", 
+        {CPF5} = "${senha}",
+        {Ativo} = TRUE()
+      )`
     );
 
     if (motoristaData.records.length > 0) {
       const motorista = motoristaData.records[0];
+      const isAdmin = motorista.fields.Administrador === true;
+
+      console.log('Login bem-sucedido:', {
+        tipo: isAdmin ? 'admin' : 'motorista',
+        nome: motorista.fields['Primeiro Nome']
+      });
+
       return res.json({
-        tipo: motorista.fields.Administrador ? 'admin' : 'motorista',
+        tipo: isAdmin ? 'admin' : 'motorista',
         nome: motorista.fields['Primeiro Nome'],
         nomeCompleto: motorista.fields['Nome Completo'],
         empresa: empresaRecord.fields.Nome,
@@ -65,10 +66,14 @@ module.exports = async (req, res) => {
       });
     }
 
+    console.log('Credenciais inválidas para:', usuario);
     return res.status(401).json({ error: 'Credenciais inválidas' });
 
   } catch (error) {
-    console.error('Login error:', error);
-    return res.status(500).json({ error: 'Erro interno do servidor' });
+    console.error('Erro no login:', error);
+    return res.status(500).json({ 
+      error: 'Erro interno do servidor',
+      details: error.message 
+    });
   }
 };
