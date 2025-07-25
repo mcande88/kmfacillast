@@ -1,0 +1,11 @@
+{
+  "name": "km-facil",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@vercel/node": "^2.15.3",
+    "dotenv": "^16.3.1"
+  }
+}
