@@ -1,3 +1,7 @@
+console.log('🔑 Variáveis:', {
+  apiKey: process.env.AIRTABLE_API_KEY?.slice(0, 5) + '...',
+  baseId: process.env.AIRTABLE_BASE_ID
+});
 const { queryAirtable } = require('../lib/airtable');
 require('dotenv').config();
 
